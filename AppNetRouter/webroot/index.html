@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Net Router</title>
+    <style>
+        :root {
+            --bg: #0f1218; --card: #1a1f2e;
+            --primary: #6c5ce7; --text: #e0e0e0; --text-dim: #8892a4;
+            --border: #2d3548; --cellular: #fd79a8; --wifi: #00b894;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, 'Roboto', sans-serif;
+            background: var(--bg); color: var(--text);
+            padding: 16px; min-height: 100vh;
+        }
+        .header { text-align: center; padding: 16px 0; }
+        .header h1 {
+            font-size: 22px; font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), #00cec9);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .header p { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
+
+        .mode-banner {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 14px; text-align: center; margin: 12px 0;
+        }
+        .mode-banner .mode-label { font-size: 13px; font-weight: 600; }
+        .mode-banner .mode-desc { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+        .mode-wifi .mode-label { color: var(--wifi); }
+        .mode-cell .mode-label { color: var(--cellular); }
+        .mode-dual .mode-label { color: var(--primary); }
+
+        .search-box {
+            width: 100%; background: var(--card); border: 1px solid var(--border);
+            border-radius: 10px; padding: 10px 14px; color: var(--text);
+            font-size: 14px; outline: none; margin-top: 12px;
+        }
+        .search-box:focus { border-color: var(--primary); }
+
+        .app-list { margin-top: 12px; border-radius: 12px; overflow: hidden; }
+        .app-item {
+            display: flex; align-items: center; padding: 10px 12px;
+            background: var(--card); border-bottom: 1px solid var(--border);
+        }
+        .app-item:last-child { border-bottom: none; }
+        .app-info { flex: 1; min-width: 0; margin-right: 8px; }
+        .app-name {
+            font-size: 13px; font-weight: 500;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .app-pkg {
+            font-size: 10px; color: var(--text-dim); margin-top: 1px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        .net-btns { display: flex; gap: 6px; flex-shrink: 0; }
+        .net-btn {
+            padding: 5px 10px; font-size: 11px; font-weight: 600;
+            border: 1.5px solid var(--border); border-radius: 8px;
+            background: transparent; color: var(--text-dim);
+            cursor: pointer; transition: all 0.15s; min-width: 44px;
+            text-align: center;
+        }
+        .net-btn:active { transform: scale(0.95); }
+        .net-btn.wifi-on { background: var(--wifi); color: #fff; border-color: var(--wifi); }
+        .net-btn.cell-on { background: var(--cellular); color: #fff; border-color: var(--cellular); }
+
+        .wg-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 14px; margin: 12px 0;
+        }
+        .wg-header {
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .wg-title {
+            font-size: 14px; font-weight: 600;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .wg-toggle {
+            position: relative; width: 48px; height: 26px;
+            border: none; border-radius: 13px; cursor: pointer;
+            background: var(--border); transition: background 0.2s;
+        }
+        .wg-toggle.on { background: #00b894; }
+        .wg-toggle::after {
+            content: ''; position: absolute; top: 3px; left: 3px;
+            width: 20px; height: 20px; border-radius: 50%;
+            background: #fff; transition: transform 0.2s;
+        }
+        .wg-toggle.on::after { transform: translateX(22px); }
+        .wg-toggle:active { transform: scale(0.95); }
+        .wg-status {
+            font-size: 11px; color: var(--text-dim); margin-top: 8px;
+            line-height: 1.6;
+        }
+        .wg-status .wg-on { color: #00b894; }
+        .wg-status .wg-off { color: var(--cellular); }
+
+        .toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
+            background: var(--card); border: 1px solid var(--wifi); border-radius: 10px;
+            padding: 10px 20px; font-size: 13px; z-index: 999; transition: transform 0.3s ease;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-dim); }
+        .section-title {
+            font-size: 13px; color: var(--text-dim); margin-top: 14px;
+            display: flex; justify-content: space-between;
+        }
+        .app-list::-webkit-scrollbar { width: 4px; }
+        .app-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        /* 流量统计 */
+        .traffic-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 14px; margin: 12px 0;
+        }
+        .traffic-title {
+            font-size: 14px; font-weight: 600; margin-bottom: 10px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .traffic-title .refresh-btn {
+            font-size: 11px; background: var(--border); border: none;
+            border-radius: 6px; padding: 4px 10px; color: var(--text-dim);
+            cursor: pointer;
+        }
+        .traffic-title .refresh-btn:active { opacity: 0.7; }
+        .traffic-bars { display: flex; gap: 12px; }
+        .traffic-col {
+            flex: 1; background: rgba(255,255,255,0.03);
+            border-radius: 8px; padding: 10px; text-align: center;
+        }
+        .traffic-col .t-label { font-size: 10px; color: var(--text-dim); }
+        .traffic-col .t-value { font-size: 18px; font-weight: 700; margin-top: 2px; }
+        .traffic-col .t-sub { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+        .t-wifi { color: var(--wifi); }
+        .t-cell { color: var(--cellular); }
+
+        .app-traffic {
+            display: flex; gap: 4px; flex-shrink: 0; margin-right: 8px;
+            flex-direction: column; align-items: flex-end; min-width: 72px;
+        }
+        .app-traffic .at-row {
+            font-size: 9px; white-space: nowrap; line-height: 1.3;
+        }
+        .at-wifi { color: var(--wifi); }
+        .at-cell { color: var(--cellular); }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>📡 App Net Router</h1>
+    <p>WiFi+蜂窝同时在线时，按应用分流</p>
+</div>
+
+<div class="mode-banner" id="mode-banner">
+    <div class="mode-label" id="mode-label">检测中...</div>
+    <div class="mode-desc" id="mode-desc"></div>
+</div>
+
+<div class="wg-card" id="wg-card">
+    <div class="wg-header">
+        <div class="wg-title">🔐 WireGuard 隧道</div>
+        <button class="wg-toggle" id="wg-toggle" onclick="toggleWg()"></button>
+    </div>
+    <div class="wg-status" id="wg-status">检测中...</div>
+</div>
+
+<div class="traffic-card" id="traffic-card">
+    <div class="traffic-title">
+        <span>📊 流量统计</span>
+        <div style="display:flex;gap:6px">
+            <button class="refresh-btn" onclick="resetTraffic()" style="color:var(--cellular)">清空</button>
+            <button class="refresh-btn" onclick="loadTraffic()">刷新</button>
+        </div>
+    </div>
+    <div class="traffic-bars" id="traffic-bars">
+        <div class="traffic-col">
+            <div class="t-label">WiFi</div>
+            <div class="t-value t-wifi" id="t-wifi-total">--</div>
+            <div class="t-sub" id="t-wifi-sub">↓ -- · ↑ --</div>
+        </div>
+        <div class="traffic-col">
+            <div class="t-label">蜂窝</div>
+            <div class="t-value t-cell" id="t-cell-total">--</div>
+            <div class="t-sub" id="t-cell-sub">↓ -- · ↑ --</div>
+        </div>
+        <div class="traffic-col">
+            <div class="t-label">合计</div>
+            <div class="t-value" id="t-all-total">--</div>
+            <div class="t-sub" id="t-all-sub"></div>
+        </div>
+    </div>
+</div>
+
+<input type="text" class="search-box" id="search" placeholder="🔍 搜索应用...">
+
+<div class="section-title">
+    <span id="counter">应用列表</span>
+    <span style="font-size:11px">WiFi+蜂窝模式下可配置</span>
+</div>
+
+<div class="app-list" id="app-list">
+    <div class="empty-state">加载中...</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    function exec(cmd) {
+        try {
+            var result = ksu.exec(cmd);
+            return typeof result === 'string' ? result : (result.stdout || '');
+        } catch (e) { return ''; }
+    }
+
+    var MODDIR = '/data/adb/modules/app_net_router';
+    var allApps = [];
+    var appConfig = {};
+    var netMode = '';
+    var trafficData = {};
+
+    // base64 -> UTF-8 字符串（atob 只支持 Latin1，中文会乱码）
+    function b64utf8(b64) {
+        try {
+            var bin = atob(b64.trim());
+            var bytes = new Uint8Array(bin.length);
+            for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            return new TextDecoder('utf-8').decode(bytes);
+        } catch(e) { return ''; }
+    }
+
+    function showToast(msg) {
+        var t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast show';
+        setTimeout(function() { t.classList.remove('show'); }, 1800);
+    }
+
+    function detectMode() {
+        var wifiIp = exec("ip -4 addr show wlan0 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d/ -f1").trim();
+        var cellIf = exec("ip -6 addr show 2>/dev/null | grep -B2 'scope global' | grep 'rmnet_data' | head -1 | awk -F'[ @]' '{print $2}'").trim();
+
+        var banner = document.getElementById('mode-banner');
+        var label = document.getElementById('mode-label');
+        var desc = document.getElementById('mode-desc');
+
+        if (wifiIp && cellIf) {
+            netMode = 'dual';
+            banner.className = 'mode-banner mode-dual';
+            label.textContent = '📶 WiFi + 📱 蜂窝';
+            desc.textContent = 'WiFi: ' + wifiIp + ' · 蜂窝: ' + cellIf + ' — 可为每个 App 配置网络';
+        } else if (wifiIp) {
+            netMode = 'wifi';
+            banner.className = 'mode-banner mode-wifi';
+            label.textContent = '📶 仅 WiFi';
+            desc.textContent = wifiIp + ' — 所有 App 走 WiFi';
+        } else if (cellIf) {
+            netMode = 'cell';
+            banner.className = 'mode-banner mode-cell';
+            label.textContent = '📱 仅蜂窝';
+            desc.textContent = cellIf + ' — 所有 App 走蜂窝';
+        } else {
+            netMode = '';
+            banner.className = 'mode-banner';
+            label.textContent = '❌ 无网络';
+            desc.textContent = '';
+        }
+    }
+
+    function loadConfig() {
+        var raw = exec('cat ' + MODDIR + '/config/apps.conf 2>/dev/null');
+        if (!raw) return;
+        raw.split('\n').forEach(function(line) {
+            line = line.replace(/#.*/, '').trim();
+            if (!line || line.indexOf(':') < 0) return;
+            var parts = line.split(':');
+            if (parts.length >= 3) {
+                appConfig[parts[0]] = { wifi: parts[1] === '1', cell: parts[2] === '1' };
+            }
+        });
+    }
+
+    function getAppCfg(pkg) {
+        return appConfig[pkg] || { wifi: true, cell: false };
+    }
+
+    function loadApps() {
+        var b64 = exec("cat /data/system/packages.list 2>/dev/null | awk '$2 >= 10000 {print $1, $2}' | sort | base64 -w 0");
+
+        try { raw = atob(b64.trim()); } catch(e) {}
+        if (!raw) {
+            document.getElementById('app-list').innerHTML = '<div class="empty-state">无法加载应用列表</div>';
+            return;
+        }
+        allApps = raw.trim().split('\n').map(function(line) {
+            var p = line.trim().split(/\s+/);
+            return { pkg: p[0], uid: parseInt(p[1]), name: '' };
+        }).filter(function(a) { return a.pkg && a.uid; });
+        renderApps();
+        loadAppNames();
+    }
+
+    function loadAppNames() {
+        var b64 = exec('sh ' + MODDIR + '/scripts/app_names.sh | base64 -w 0');
+        var raw = b64utf8(b64);
+        if (!raw) return;
+        raw.split('\n').forEach(function(line) {
+            var idx = line.indexOf(':');
+            if (idx > 0) {
+                var pkg = line.substring(0, idx);
+                var lbl = line.substring(idx + 1).trim();
+                if (lbl && lbl !== 'null') {
+                    for (var k = 0; k < allApps.length; k++) {
+                        if (allApps[k].pkg === pkg) { allApps[k].name = lbl; break; }
+                    }
+                }
+            }
+        });
+        renderApps();
+    }
+
+    function renderApps() {
+        var query = document.getElementById('search').value.toLowerCase();
+        var filtered = allApps.filter(function(a) {
+            return a.pkg.toLowerCase().indexOf(query) >= 0 ||
+                   (a.name && a.name.toLowerCase().indexOf(query) >= 0);
+        });
+        filtered.sort(function(a, b) {
+            var ta = trafficData[a.uid] || {};
+            var tb = trafficData[b.uid] || {};
+            var ca = (ta.cr||0) + (ta.ct||0);
+            var cb = (tb.cr||0) + (tb.ct||0);
+            if (ca !== cb) return cb - ca;
+            var ac = appConfig[a.pkg] ? 0 : 1;
+            var bc = appConfig[b.pkg] ? 0 : 1;
+            if (ac !== bc) return ac - bc;
+            return (a.name || a.pkg).localeCompare(b.name || b.pkg);
+        });
+
+        var customCnt = Object.keys(appConfig).length;
+        document.getElementById('counter').textContent =
+            '应用 (' + filtered.length + ')' + (customCnt > 0 ? ' · ' + customCnt + ' 个自定义' : '');
+
+        if (filtered.length === 0) {
+            document.getElementById('app-list').innerHTML = '<div class="empty-state">无匹配</div>';
+            return;
+        }
+
+        var isDual = netMode === 'dual';
+        var html = '';
+        for (var i = 0; i < filtered.length; i++) {
+            var app = filtered[i];
+            var cfg = getAppCfg(app.pkg);
+            var dn = app.name || app.pkg.split('.').pop();
+            var tr = trafficData[app.uid] || {};
+            var hasTraffic = (tr.wr || tr.wt || tr.cr || tr.ct);
+
+            html += '<div class="app-item">'
+                + '<div class="app-info">'
+                + '<div class="app-name">' + escHtml(dn) + '</div>'
+                + '<div class="app-pkg">' + escHtml(app.pkg) + '</div>'
+                + '</div>';
+
+            html += '<div class="app-traffic">';
+            if (hasTraffic) {
+                var wTotal = (tr.wr||0) + (tr.wt||0);
+                var cTotal = (tr.cr||0) + (tr.ct||0);
+                if (wTotal > 0) html += '<div class="at-row at-wifi">W ↓' + humanB(tr.wr||0) + ' ↑' + humanB(tr.wt||0) + '</div>';
+                if (cTotal > 0) html += '<div class="at-row at-cell">C ↓' + humanB(tr.cr||0) + ' ↑' + humanB(tr.ct||0) + '</div>';
+            }
+            html += '</div>';
+
+            if (isDual) {
+                html += '<div class="net-btns">'
+                    + '<button class="net-btn ' + (cfg.wifi ? 'wifi-on' : '') + '" onclick="toggle(\'' + app.pkg + '\',\'wifi\')">WiFi</button>'
+                    + '<button class="net-btn ' + (cfg.cell ? 'cell-on' : '') + '" onclick="toggle(\'' + app.pkg + '\',\'cell\')">蜂窝</button>'
+                    + '</div>';
+            } else if (netMode === 'wifi') {
+                html += '<div class="net-btns"><span class="net-btn wifi-on">WiFi</span></div>';
+            } else if (netMode === 'cell') {
+                html += '<div class="net-btns"><span class="net-btn cell-on">蜂窝</span></div>';
+            }
+            html += '</div>';
+        }
+        document.getElementById('app-list').innerHTML = html;
+    }
+
+    function toggle(pkg, type) {
+        var cfg = getAppCfg(pkg);
+        cfg = { wifi: cfg.wifi, cell: cfg.cell };
+        if (type === 'wifi') cfg.wifi = !cfg.wifi;
+        else cfg.cell = !cfg.cell;
+
+        if (cfg.wifi && !cfg.cell) {
+            delete appConfig[pkg];
+        } else {
+            appConfig[pkg] = cfg;
+        }
+        renderApps();
+        saveAndApply();
+    }
+
+    var _timer = null;
+    function saveAndApply() {
+        if (_timer) clearTimeout(_timer);
+        _timer = setTimeout(function() {
+            var content = '# App Net Router\n# pkg:wifi:cell\n';
+            for (var pkg in appConfig) {
+                var c = appConfig[pkg];
+                content += pkg + ':' + (c.wifi ? '1' : '0') + ':' + (c.cell ? '1' : '0') + '\n';
+            }
+            var b64 = btoa(content);
+            exec('echo ' + b64 + ' | base64 -d > ' + MODDIR + '/config/apps.conf');
+            exec('sh ' + MODDIR + '/scripts/apply_rules.sh');
+            showToast('✅ 已生效');
+        }, 300);
+    }
+
+    function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    document.getElementById('search').addEventListener('input', renderApps);
+
+    // === WireGuard 管理 ===
+    var WG_SCRIPT = MODDIR + '/scripts/wg_start.sh';
+
+    function refreshWg() {
+        var btn = document.getElementById('wg-toggle');
+        var status = document.getElementById('wg-status');
+
+        exec('sh ' + MODDIR + '/scripts/wg_status.sh');
+        var b64 = exec('cat ' + MODDIR + '/logs/wg_status.txt 2>/dev/null | base64 -w 0');
+
+        var raw = b64utf8(b64);
+
+        if (raw && raw.indexOf('UP') >= 0 && raw.indexOf('interface') >= 0) {
+            btn.className = 'wg-toggle on';
+            var handshake = ((raw.match(/handshake_time:\s*(.+)/) || [])[1] || '').trim();
+            var hsAgo = parseInt((raw.match(/handshake_ago:\s*(\d+)/) || [])[1] || '9999');
+            var startTime = ((raw.match(/start_time:\s*(.+)/) || [])[1] || '').trim();
+            var transfer = ((raw.match(/transfer:\s*(.+)/) || [])[1] || '-').trim();
+            var localIp = ((raw.match(/local_ip:\s*(.+)/) || [])[1] || '无').trim();
+            var remoteIp = ((raw.match(/remote_ip:\s*(.+)/) || [])[1] || '无').trim();
+            var localIpv6 = ((raw.match(/local_ipv6:\s*(.+)/) || [])[1] || '无').trim();
+            var remoteIpv6 = ((raw.match(/remote_ipv6:\s*(.+)/) || [])[1] || '无').trim();
+            var remoteStatus = ((raw.match(/remote_status:\s*(.+)/) || [])[1] || '').trim();
+            var pingTime = ((raw.match(/ping_time:\s*(.+)/) || [])[1] || '').trim();
+            var transferSent = ((raw.match(/transfer_sent:\s*(.+)/) || [])[1] || '0 B').trim();
+            var transferRecv = ((raw.match(/transfer_recv:\s*(.+)/) || [])[1] || '0 B').trim();
+
+            var html = '<span class="wg-on">本机状态: 已启动</span>';
+            if (startTime && startTime !== '无') html += ' · ' + startTime;
+
+            if (remoteStatus === 'connected') {
+                html += '<br><span class="wg-on">远程状态: 已连接</span>';
+                if (pingTime && pingTime !== '无') html += ' · ' + pingTime;
+            } else if (remoteStatus === 'reconnecting') {
+                html += '<br><span style="color:#fdcb6e">远程状态: 重连中...</span>';
+            } else if (remoteStatus === 'no_ipv6') {
+                html += '<br><span class="wg-off">远程状态: 未连接</span> · 无IPv6出口';
+            } else {
+                html += '<br><span class="wg-off">远程状态: 未连接</span>';
+            }
+            if (handshake && handshake !== '无') html += '<br>密钥交换: ' + handshake;
+            html += '<br>本机内网: ' + localIp;
+            html += '<br>远程内网: ' + remoteIp;
+            html += '<br>本机IPv6: ' + localIpv6;
+            html += '<br>远程IPv6: ' + remoteIpv6;
+            html += '<br>发送流量: ' + transferSent;
+            html += '<br>接收流量: ' + transferRecv;
+            status.innerHTML = html;
+        } else {
+            btn.className = 'wg-toggle';
+            status.innerHTML = '<span class="wg-off">本机状态: 未运行</span><br><span class="wg-off">远程状态: 未连接</span>';
+        }
+    }
+
+    var _wgPollTimer = null;
+    function pollHandshake(tries) {
+        if (tries <= 0) { refreshWg(); return; }
+        exec('sh ' + MODDIR + '/scripts/wg_status.sh');
+        var b64 = exec('cat ' + MODDIR + '/logs/wg_status.txt 2>/dev/null | base64 -w 0');
+        var raw = b64utf8(b64);
+        var rs = ((raw.match(/remote_status:\s*(.+)/) || [])[1] || '').trim();
+        if (rs === 'connected') {
+            refreshWg();
+            showToast('🔐 远程连接成功');
+            return;
+        }
+        if (rs === 'no_ipv6') {
+            refreshWg();
+            return;
+        }
+        var status = document.getElementById('wg-status');
+        status.innerHTML = '<span class="wg-on">本机状态: 已启动</span>'
+            + '<br><span style="color:#fdcb6e">远程状态: 连接中...</span>';
+        _wgPollTimer = setTimeout(function() { pollHandshake(tries - 1); }, 3000);
+    }
+
+    function toggleWg() {
+        var btn = document.getElementById('wg-toggle');
+        var status = document.getElementById('wg-status');
+        var isOn = btn.classList.contains('on');
+        btn.style.opacity = '0.5';
+        btn.style.pointerEvents = 'none';
+        if (_wgPollTimer) { clearTimeout(_wgPollTimer); _wgPollTimer = null; }
+        if (isOn) {
+            status.innerHTML = '<span style="color:#fdcb6e">⏳ 关闭中...</span>';
+            setTimeout(function() {
+                exec('sh ' + WG_SCRIPT + ' stop');
+                btn.style.opacity = '1';
+                btn.style.pointerEvents = '';
+                refreshWg();
+                showToast('🔒 WireGuard 已关闭');
+            }, 50);
+        } else {
+            status.innerHTML = '<span style="color:#fdcb6e">⏳ 启动中...</span>';
+            setTimeout(function() {
+                exec('sh ' + WG_SCRIPT + ' start');
+                btn.style.opacity = '1';
+                btn.style.pointerEvents = '';
+                showToast('🔐 WireGuard 已启动，等待远程连接...');
+                pollHandshake(10);
+            }, 50);
+        }
+    }
+
+    // === 流量统计 ===
+    function humanB(b) {
+        if (b >= 1073741824) return (b/1073741824).toFixed(1) + 'G';
+        if (b >= 1048576) return (b/1048576).toFixed(1) + 'M';
+        if (b >= 1024) return (b/1024).toFixed(0) + 'K';
+        return b + 'B';
+    }
+
+    var trafficBaseline = {};
+    var BASELINE_FILE = MODDIR + '/logs/.traffic_baseline';
+
+    function loadBaseline() {
+        var raw = exec('cat ' + BASELINE_FILE + ' 2>/dev/null');
+        if (!raw) return;
+        try { trafficBaseline = JSON.parse(raw); } catch(e) { trafficBaseline = {}; }
+    }
+
+    function loadTraffic() {
+        var raw = exec('sh ' + MODDIR + '/scripts/traffic_data.sh');
+        if (!raw) return;
+
+        trafficData = {};
+        var totalWr=0, totalWt=0, totalCr=0, totalCt=0;
+        raw.trim().split('\n').forEach(function(line) {
+            var p = line.trim().split(/\s+/);
+            if (p.length < 5) return;
+            var uid = parseInt(p[0]);
+            var bl = trafficBaseline[uid] || {};
+            var d = {
+                wr: Math.max(0, parseInt(p[1]) - (bl.wr||0)),
+                wt: Math.max(0, parseInt(p[2]) - (bl.wt||0)),
+                cr: Math.max(0, parseInt(p[3]) - (bl.cr||0)),
+                ct: Math.max(0, parseInt(p[4]) - (bl.ct||0))
+            };
+            trafficData[uid] = d;
+            totalWr += d.wr; totalWt += d.wt; totalCr += d.cr; totalCt += d.ct;
+        });
+
+        document.getElementById('t-wifi-total').textContent = humanB(totalWr + totalWt);
+        document.getElementById('t-wifi-sub').textContent = '↓ ' + humanB(totalWr) + ' · ↑ ' + humanB(totalWt);
+        document.getElementById('t-cell-total').textContent = humanB(totalCr + totalCt);
+        document.getElementById('t-cell-sub').textContent = '↓ ' + humanB(totalCr) + ' · ↑ ' + humanB(totalCt);
+        var all = totalWr + totalWt + totalCr + totalCt;
+        document.getElementById('t-all-total').textContent = humanB(all);
+        document.getElementById('t-all-sub').textContent = '蜂窝占 ' + (all > 0 ? ((totalCr+totalCt)/all*100).toFixed(1) : '0') + '%';
+
+        renderApps();
+    }
+
+    function resetTraffic() {
+        var raw = exec('sh ' + MODDIR + '/scripts/traffic_data.sh');
+        if (!raw) return;
+
+        trafficBaseline = {};
+        raw.trim().split('\n').forEach(function(line) {
+            var p = line.trim().split(/\s+/);
+            if (p.length < 5) return;
+            var uid = parseInt(p[0]);
+            trafficBaseline[uid] = { wr: parseInt(p[1]), wt: parseInt(p[2]), cr: parseInt(p[3]), ct: parseInt(p[4]) };
+        });
+
+        var b64 = btoa(JSON.stringify(trafficBaseline));
+        exec('echo ' + b64 + ' | base64 -d > ' + BASELINE_FILE);
+
+        showToast('✅ 流量已清空');
+        loadTraffic();
+    }
+
+    detectMode();
+    loadConfig();
+    loadApps();
+    loadBaseline();
+    loadTraffic();
+    refreshWg();
+    setInterval(refreshWg, 10000);
+    setInterval(loadTraffic, 30000);
+</script>
+</body>
+</html>

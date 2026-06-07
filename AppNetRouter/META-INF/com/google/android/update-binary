@@ -1,0 +1,63 @@
+#!/sbin/sh
+
+##########################################################
+# KernelSU 模块安装脚本 (update-binary)
+##########################################################
+
+TMPDIR=/dev/tmp
+MOUNTPATH=/dev/tmp/magisk_img
+
+# 初始化
+umask 022
+ui_print() { echo "$1"; }
+abort() { ui_print "$1"; exit 1; }
+
+# 解压模块
+ZIPFILE=$3
+OUTFD=$2
+
+ui_print "=============================="
+ui_print "  App Net Router v1.0.0"
+ui_print "  按应用分流 WiFi/蜂窝"
+ui_print "=============================="
+
+# KernelSU 模块安装目录
+MODPATH=${MODPATH:-/data/adb/modules/app_net_router}
+mkdir -p "$MODPATH"
+
+# 解压文件
+unzip -o "$ZIPFILE" -d "$MODPATH" -x 'META-INF/*' 2>/dev/null
+
+# 设置权限
+set_perm() {
+    chown $2:$3 $1
+    chmod $4 $1
+    [ -n "$5" ] && chcon $5 $1
+}
+
+set_perm_recursive() {
+    find $1 -type d -exec chmod $4 {} \;
+    find $1 -type f -exec chmod $5 {} \;
+    chown -R $2:$3 $1
+}
+
+# 设置目录权限
+set_perm_recursive "$MODPATH" 0 0 0755 0644
+set_perm "$MODPATH/service.sh" 0 0 0755
+set_perm "$MODPATH/scripts/apply_rules.sh" 0 0 0755
+set_perm "$MODPATH/scripts/network_monitor.sh" 0 0 0755
+
+# 确保配置目录可写
+mkdir -p "$MODPATH/config"
+mkdir -p "$MODPATH/logs"
+chmod 0755 "$MODPATH/config"
+chmod 0755 "$MODPATH/logs"
+
+# 保留旧配置（升级时）
+if [ -f "/data/adb/modules/app_net_router/config/apps.conf" ]; then
+    cp "/data/adb/modules/app_net_router/config/apps.conf" "$MODPATH/config/apps.conf"
+    ui_print "- 已保留旧配置"
+fi
+
+ui_print "- 安装完成，重启后生效"
+ui_print "- 在 KernelSU Manager 中打开 WebUI 管理分流规则"
