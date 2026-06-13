@@ -50,6 +50,11 @@ start() {
 
 stop() {
     ip link del wg0 2>/dev/null
+    # 杀掉后台 daemon 进程以防资源泄漏与并发冲突
+    local pids=$(pgrep -f "wg_start.sh daemon" | grep -v "$$")
+    if [ -n "$pids" ]; then
+        kill -9 $pids 2>/dev/null
+    fi
     log "WireGuard 已停止"
 }
 
@@ -59,6 +64,21 @@ status() {
     } || {
         log "WireGuard 未运行"
     }
+}
+
+is_wifi_direct() {
+    # 1. 检查 10.10.10.1 是否直接在 main 表中通过 wlan 路由
+    if ip route show 10.10.10.1 2>/dev/null | grep -q -E "dev wlan[0-9]"; then
+        return 0
+    fi
+    # 2. 检查 11998 规则指向的路由表是否通过 wlan 路由
+    local table_id=$(ip -4 rule show 2>/dev/null | grep "11998:" | sed -n 's/.*lookup //p' | tr -d '[:space:]')
+    if [ -n "$table_id" ]; then
+        if ip route show table "$table_id" 2>/dev/null | grep -q -E "dev wlan[0-9]"; then
+            return 0
+        fi
+    fi
+    return 1
 }
 
 daemon() {
@@ -80,6 +100,11 @@ daemon() {
         if ! ip link show wg0 >/dev/null 2>&1; then
             daemon_log "wg0 接口已关闭，守护进程退出"
             exit 0
+        fi
+
+        # 如果处于家庭局域网直连状态，跳过检测
+        if is_wifi_direct; then
+            continue
         fi
 
         HANDSHAKE=$(LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib $WG show wg0 latest-handshakes 2>/dev/null | awk '{print $2}')
