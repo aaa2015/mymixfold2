@@ -110,7 +110,7 @@ case "$1" in
     start)  start ;;
     stop)   stop ;;
     status) status ;;
-    restart) stop; sleep 1; start ;;
+    restart) stop; sleep 1; sh "/data/adb/modules/app_net_router/scripts/apply_rules.sh" ;;
     daemon)  daemon ;;
     *)  echo "用法: $0 {start|stop|status|restart|daemon}" ;;
 esac
