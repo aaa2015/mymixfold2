@@ -1,0 +1,36 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.dualscreen.keepon.app-mergeDebugResources-2:/values/values.xml",
+            "map": [
+                {
+                    "source": "/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/res/values/colors.xml",
+                    "from": {
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,112",
+                        "endColumns": "56,56",
+                        "endOffsets": "107,164"
+                    }
+                },
+                {
+                    "source": "/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/res/values/styles.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "79",
+                        "endOffsets": "130"
+                    },
+                    "to": {
+                        "startLines": "4",
+                        "startColumns": "4",
+                        "startOffsets": "169",
+                        "endColumns": "78",
+                        "endOffsets": "243"
+                    }
+                }
+            ]
+        }
+    ]
+}

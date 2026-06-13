@@ -1,0 +1,14 @@
+[
+    {
+        "merged": "com.dualscreen.keepon.app-merged_res-4:/xml_xposed_scopes.xml.flat",
+        "source": "com.dualscreen.keepon.app-main-6:/xml/xposed_scopes.xml"
+    },
+    {
+        "merged": "com.dualscreen.keepon.app-merged_res-4:/drawable_ic_launcher.xml.flat",
+        "source": "com.dualscreen.keepon.app-main-6:/drawable/ic_launcher.xml"
+    },
+    {
+        "merged": "com.dualscreen.keepon.app-merged_res-4:/drawable_ic_launcher_round.xml.flat",
+        "source": "com.dualscreen.keepon.app-main-6:/drawable/ic_launcher_round.xml"
+    }
+]

@@ -1,0 +1,7 @@
+com.dualscreen.keepon.app-pngs-0 /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/build/generated/res/pngs/debug
+com.dualscreen.keepon.app-resValues-1 /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/build/generated/res/resValues/debug
+com.dualscreen.keepon.app-packageDebugResources-2 /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
+com.dualscreen.keepon.app-packageDebugResources-3 /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
+com.dualscreen.keepon.app-merged_res-4 /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/build/intermediates/merged_res/debug
+com.dualscreen.keepon.app-debug-5 /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/debug/res
+com.dualscreen.keepon.app-main-6 /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/res

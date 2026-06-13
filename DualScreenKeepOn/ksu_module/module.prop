@@ -1,0 +1,6 @@
+id=dualscreen_keepon
+name=双屏常亮 - DualScreenKeepOn
+version=v1.0
+versionCode=1
+author=mycode
+description=小米Mix Fold 2 双屏常亮 - 展开内屏时保持外屏不关闭

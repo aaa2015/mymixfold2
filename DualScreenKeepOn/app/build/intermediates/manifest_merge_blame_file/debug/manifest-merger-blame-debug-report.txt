@@ -1,0 +1,72 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.dualscreen.keepon"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="35"
+9        android:targetSdkVersion="35" />
+10
+11    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+11-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:5:5-76
+11-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:5:22-74
+12
+13    <application
+13-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:7:5-36:19
+14        android:allowBackup="true"
+14-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:8:9-35
+15        android:debuggable="true"
+16        android:extractNativeLibs="false"
+17        android:icon="@drawable/ic_launcher"
+17-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:12:9-45
+18        android:label="双屏常亮"
+18-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:9:9-29
+19        android:roundIcon="@drawable/ic_launcher_round"
+19-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:13:9-56
+20        android:supportsRtl="true"
+20-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:10:9-35
+21        android:theme="@style/AppTheme" >
+21-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:11:9-40
+22        <activity
+22-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:15:9-23:20
+23            android:name="com.dualscreen.keepon.MainActivity"
+23-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:16:13-41
+24            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+24-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:18:13-91
+25            android:exported="true" >
+25-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:17:13-36
+26            <intent-filter>
+26-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:19:13-22:29
+27                <action android:name="android.intent.action.MAIN" />
+27-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:20:17-69
+27-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:20:25-66
+28
+29                <category android:name="android.intent.category.LAUNCHER" />
+29-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:21:17-77
+29-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:21:27-74
+30            </intent-filter>
+31        </activity>
+32
+33        <!-- Xposed / LSPosed 模块声明 -->
+34        <meta-data
+34-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:26:9-28:36
+35            android:name="xposedmodule"
+35-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:27:13-40
+36            android:value="true" />
+36-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:28:13-33
+37        <meta-data
+37-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:29:9-31:65
+38            android:name="xposeddescription"
+38-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:30:13-45
+39            android:value="小米Mix Fold 2 双屏同时显示 - 展开时内屏外屏同时亮起" />
+39-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:31:13-62
+40        <meta-data
+40-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:32:9-34:34
+41            android:name="xposedminversion"
+41-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:33:13-44
+42            android:value="82" />
+42-->/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:34:13-31
+43    </application>
+44
+45</manifest>

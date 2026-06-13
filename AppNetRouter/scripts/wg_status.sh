@@ -84,9 +84,12 @@ transfer_sent=$(echo "$transfer_line" | cut -d',' -f2 | sed 's/^ *//;s/ sent//')
 
 # ---- 远程连接状态（直接 ping 判断，不依赖 IPv6）----
 ping_time=""
-if ping -c1 -W2 10.10.10.1 >/dev/null 2>&1; then
+ping_rtt=""
+ping_out=$(ping -c1 -W2 10.10.10.1 2>/dev/null)
+if [ $? -eq 0 ]; then
     remote_status="connected"
     ping_time=$(date '+%Y-%m-%d %H:%M:%S')
+    ping_rtt=$(echo "$ping_out" | grep 'time=' | sed 's/.*time=\([0-9.]*\).*/\1/')
 else
     # 区分: 有握手但 ping 不通 = 重连中; 完全没握手 = 未连接
     if [ -n "$hs_ago" ] && [ "$hs_ago" -lt 180 ] 2>/dev/null; then
@@ -111,4 +114,5 @@ transfer_sent: ${transfer_sent:-0 B}
 transfer_recv: ${transfer_recv:-0 B}
 remote_status: ${remote_status}
 ping_time: ${ping_time:-无}
+ping_rtt: ${ping_rtt:-}
 EOF

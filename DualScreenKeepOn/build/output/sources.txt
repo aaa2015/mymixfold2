@@ -1,0 +1,10 @@
+/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/java/de/robv/android/xposed/IXposedMod.java
+/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/java/de/robv/android/xposed/callbacks/XC_LoadPackage.java
+/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/java/de/robv/android/xposed/XCallback.java
+/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/java/de/robv/android/xposed/XposedBridge.java
+/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/java/de/robv/android/xposed/XC_MethodHook.java
+/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/java/de/robv/android/xposed/IXposedHookLoadPackage.java
+/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/java/de/robv/android/xposed/XposedHelpers.java
+/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/java/com/dualScreenKeepOn/MainActivity.java
+/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/java/com/dualScreenKeepOn/MainHook.java
+/Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/java/com/dualScreenKeepOn/XposedInit.java

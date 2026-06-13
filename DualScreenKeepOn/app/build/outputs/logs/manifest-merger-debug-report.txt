@@ -1,0 +1,80 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:2:1-38:12
+INJECTED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:2:1-38:12
+INJECTED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:2:1-38:12
+INJECTED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:2:1-38:12
+	package
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:3:5-36
+		INJECTED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml
+	android:versionName
+		INJECTED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml
+	android:versionCode
+		INJECTED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:2:11-69
+uses-permission#android.permission.QUERY_ALL_PACKAGES
+ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:5:5-76
+	android:name
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:5:22-74
+application
+ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:7:5-36:19
+INJECTED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:7:5-36:19
+	android:extractNativeLibs
+		INJECTED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml
+	android:supportsRtl
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:10:9-35
+	android:label
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:9:9-29
+	android:roundIcon
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:13:9-56
+	android:icon
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:12:9-45
+	android:allowBackup
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:8:9-35
+	android:theme
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:11:9-40
+activity#com.dualscreen.keepon.MainActivity
+ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:15:9-23:20
+	android:exported
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:17:13-36
+	android:configChanges
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:18:13-91
+	android:name
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:16:13-41
+intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
+ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:19:13-22:29
+action#android.intent.action.MAIN
+ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:20:17-69
+	android:name
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:20:25-66
+category#android.intent.category.LAUNCHER
+ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:21:17-77
+	android:name
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:21:27-74
+meta-data#xposedmodule
+ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:26:9-28:36
+	android:value
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:28:13-33
+	android:name
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:27:13-40
+meta-data#xposeddescription
+ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:29:9-31:65
+	android:value
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:31:13-62
+	android:name
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:30:13-45
+meta-data#xposedminversion
+ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:32:9-34:34
+	android:value
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:34:13-31
+	android:name
+		ADDED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml:33:13-44
+uses-sdk
+INJECTED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml
+INJECTED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /Users/fangqingyuan/Projects/mymixfold2/DualScreenKeepOn/app/src/main/AndroidManifest.xml

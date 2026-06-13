@@ -1,0 +1,10 @@
+app/src/main/java/de/robv/android/xposed/IXposedMod.java
+app/src/main/java/de/robv/android/xposed/callbacks/XC_LoadPackage.java
+app/src/main/java/de/robv/android/xposed/XCallback.java
+app/src/main/java/de/robv/android/xposed/XposedBridge.java
+app/src/main/java/de/robv/android/xposed/XC_MethodHook.java
+app/src/main/java/de/robv/android/xposed/IXposedHookLoadPackage.java
+app/src/main/java/de/robv/android/xposed/XposedHelpers.java
+app/src/main/java/com/dualScreenKeepOn/MainActivity.java
+app/src/main/java/com/dualScreenKeepOn/MainHook.java
+app/src/main/java/com/dualScreenKeepOn/XposedInit.java

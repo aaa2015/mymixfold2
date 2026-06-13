@@ -1,0 +1,6 @@
+id=dualscreen_keepon
+name=双屏同时显示
+version=v3.0
+versionCode=3
+author=mycode
+description=小米 Mix Fold 2 双屏同时显示 - 展开时内屏外屏同时亮起 (device_state 5)

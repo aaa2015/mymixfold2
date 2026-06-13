@@ -43,6 +43,9 @@ start() {
 
     log "WireGuard 已启动"
     $WG show
+
+    # 启动后台健康检测 daemon
+    nohup sh "$0" daemon >/dev/null 2>&1 &
 }
 
 stop() {
@@ -58,10 +61,56 @@ status() {
     }
 }
 
+daemon() {
+    local today
+    local ts
+    local SCRIPT_DIR="/data/adb/modules/app_net_router/scripts"
+    
+    daemon_log() {
+        today=$(date '+%Y-%m-%d')
+        ts=$(date '+%H:%M:%S')
+        echo "[$ts] [wg_health] $1" >> "/data/adb/modules/app_net_router/logs/anr_${today}.log" 2>/dev/null
+    }
+
+    daemon_log "健康检测守护进程启动"
+    DAEMON_START=$(date +%s)
+
+    while true; do
+        sleep 30
+        if ! ip link show wg0 >/dev/null 2>&1; then
+            daemon_log "wg0 接口已关闭，守护进程退出"
+            exit 0
+        fi
+
+        HANDSHAKE=$(LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib $WG show wg0 latest-handshakes 2>/dev/null | awk '{print $2}')
+        NOW=$(date +%s)
+        
+        if [ -n "$HANDSHAKE" ]; then
+            if [ "$HANDSHAKE" -gt 0 ]; then
+                AGE=$((NOW - HANDSHAKE))
+                if [ "$AGE" -gt 120 ]; then
+                    daemon_log "⚠ WireGuard 握手超时 (${AGE}s)，重新启动隧道"
+                    sh "$SCRIPT_DIR/wg_start.sh" restart
+                    exit 0
+                fi
+            else
+                # 未检测到初始握手，检查启动时间
+                UP_TIME=$((NOW - DAEMON_START))
+                if [ "$UP_TIME" -gt 120 ]; then
+                    daemon_log "⚠ 未检测到初始握手 (${UP_TIME}s)，重新启动隧道"
+                    sh "$SCRIPT_DIR/wg_start.sh" restart
+                    exit 0
+                fi
+            fi
+        fi
+    done
+}
+
 case "$1" in
     start)  start ;;
     stop)   stop ;;
     status) status ;;
     restart) stop; sleep 1; start ;;
-    *)  echo "用法: $0 {start|stop|status|restart}" ;;
+    daemon)  daemon ;;
+    *)  echo "用法: $0 {start|stop|status|restart|daemon}" ;;
 esac

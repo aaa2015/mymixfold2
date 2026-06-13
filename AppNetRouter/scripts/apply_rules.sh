@@ -207,9 +207,23 @@ apply_rules() {
     # 0. 解析 endpoint 域名
     resolve_wg_endpoint
 
-    # 1. WG 子网路由: 确保 10.10.10.0/24 始终走 main 表 (wg0 接口)
+    # 1. WG 子网路由: 确保 10.10.10.0/24 可达
     ip -4 rule del to $WG_SUBNET 2>/dev/null
-    ip -4 rule add to $WG_SUBNET table main priority $WG_PRIO
+    if [ "$wifi_up" -gt 0 ]; then
+        # 在家时: 走 WiFi 默认路由（局域网直连，不经过 WG 隧道）
+        WIFI_TABLE=$(ip -4 route show table all 2>/dev/null | grep "default.*dev wlan0" | head -1 | awk '{for(i=1;i<=NF;i++) if($i=="table") print $(i+1)}')
+        if [ -n "$WIFI_TABLE" ]; then
+            ip -4 rule add to $WG_SUBNET table "$WIFI_TABLE" priority $WG_PRIO
+            log "WG 子网 $WG_SUBNET → WiFi 直连 (table $WIFI_TABLE)"
+        else
+            ip -4 rule add to $WG_SUBNET table main priority $WG_PRIO
+            log "WG 子网 $WG_SUBNET → main 表 (wg0)"
+        fi
+    else
+        # 不在家时: 走 main 表 (wg0 接口)
+        ip -4 rule add to $WG_SUBNET table main priority $WG_PRIO
+        log "WG 子网 $WG_SUBNET → main 表 (wg0)"
+    fi
 
     # 2. WG endpoint IPv6 路由: 确保蜂窝可达
     if [ -n "$WG_ENDPOINT_V6" ]; then

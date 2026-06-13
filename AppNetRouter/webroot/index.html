@@ -450,6 +450,7 @@
             var remoteIpv6 = ((raw.match(/remote_ipv6:\s*(.+)/) || [])[1] || '无').trim();
             var remoteStatus = ((raw.match(/remote_status:\s*(.+)/) || [])[1] || '').trim();
             var pingTime = ((raw.match(/ping_time:\s*(.+)/) || [])[1] || '').trim();
+            var pingRtt = ((raw.match(/ping_rtt:\s*(.+)/) || [])[1] || '').trim();
             var transferSent = ((raw.match(/transfer_sent:\s*(.+)/) || [])[1] || '0 B').trim();
             var transferRecv = ((raw.match(/transfer_recv:\s*(.+)/) || [])[1] || '0 B').trim();
 
@@ -458,6 +459,7 @@
 
             if (remoteStatus === 'connected') {
                 html += '<br><span class="wg-on">远程状态: 已连接</span>';
+                if (pingRtt) html += ' <span style="color:var(--wifi);font-weight:600">(' + pingRtt + ' ms)</span>';
                 if (pingTime && pingTime !== '无') html += ' · ' + pingTime;
             } else if (remoteStatus === 'reconnecting') {
                 html += '<br><span style="color:#fdcb6e">远程状态: 重连中...</span>';

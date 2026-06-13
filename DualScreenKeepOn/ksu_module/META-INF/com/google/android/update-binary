@@ -1,0 +1,36 @@
+#!/sbin/sh
+#
+# KernelSU Module Installer
+#
+##########################################################################################
+# Installation helper
+UMASK_BACKUP=$(umask)
+umask 000
+
+# 获取模块目录
+MODPATH=${0%/*}/..
+
+# 设置权限
+set_perm() {
+  chown $1:$2 $4 || return 1
+  chmod $3 $4 || return 1
+  return 0
+}
+
+# 安装模块
+ui_print "- 正在安装双屏常亮模块..."
+ui_print "- 目标: 小米 Mix Fold 2"
+
+# 复制文件
+cp -af $MODPATH/module.prop $MODPATH/
+cp -af $MODPATH/service.sh $MODPATH/
+cp -af $MODPATH/daemon.sh $MODPATH/
+
+# 设置权限
+set_perm 0 0 0755 $MODPATH/service.sh
+set_perm 0 0 0755 $MODPATH/daemon.sh
+
+ui_print "- 安装完成！"
+ui_print "- 请重启手机生效"
+
+umask $UMASK_BACKUP
