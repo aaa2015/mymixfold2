@@ -7,9 +7,11 @@ WG_CONF="/data/data/com.termux/files/usr/etc/wireguard/wg0.conf"
 PRIV_KEY_FILE="/data/local/tmp/wg_priv.key"
 
 # WireGuard 配置
-CLIENT_PRIV=$(grep 'PrivateKey' "$WG_CONF" | awk -F' = ' '{print $2}')
-SERVER_PUB=$(grep 'PublicKey' "$WG_CONF" | awk -F' = ' '{print $2}')
-ENDPOINT=$(grep 'Endpoint' "$WG_CONF" | awk -F' = ' '{print $2}')
+CLIENT_PRIV=$(sed -n 's/^PrivateKey[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
+SERVER_PUB=$(sed -n 's/^PublicKey[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
+ENDPOINT=$(sed -n 's/^Endpoint[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
+ALLOWED_IPS=$(sed -n 's/^AllowedIPs[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
+CLIENT_PSK=$(sed -n 's/^PresharedKey[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
 
 log() { echo "[WG] $(date '+%H:%M:%S') $1"; }
 
@@ -31,15 +33,31 @@ start() {
     $WG set wg0 private-key "$PRIV_KEY_FILE"
     rm -f "$PRIV_KEY_FILE"
 
-    # 设置 peer
-    $WG set wg0 peer "$SERVER_PUB" \
-        endpoint "$ENDPOINT" \
-        allowed-ips 10.10.10.1/32 \
-        persistent-keepalive 25
+    # 设置 peer 和 PSK
+    if [ -n "$CLIENT_PSK" ]; then
+        local psk_file="/data/local/tmp/wg_psk.key"
+        echo "$CLIENT_PSK" > "$psk_file"
+        chmod 600 "$psk_file"
+        $WG set wg0 peer "$SERVER_PUB" \
+            endpoint "$ENDPOINT" \
+            allowed-ips "$ALLOWED_IPS" \
+            preshared-key "$psk_file" \
+            persistent-keepalive 25
+        rm -f "$psk_file"
+    else
+        $WG set wg0 peer "$SERVER_PUB" \
+            endpoint "$ENDPOINT" \
+            allowed-ips "$ALLOWED_IPS" \
+            persistent-keepalive 25
+    fi
 
     # 配置地址并启动
     ip addr add 10.10.10.2/24 dev wg0
     ip link set wg0 up
+
+    # 添加路由以支持内网访问
+    ip route add 10.10.10.0/24 dev wg0 2>/dev/null || true
+    ip route add 192.168.88.0/24 dev wg0 2>/dev/null || true
 
     log "WireGuard 已启动"
     $WG show

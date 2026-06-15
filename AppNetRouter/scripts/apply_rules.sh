@@ -33,7 +33,7 @@ WG_CONF="/data/data/com.termux/files/usr/etc/wireguard/wg0.conf"
 WG_DOMAIN="myhome2026.online"
 WG_ENDPOINT_V6=""  # 运行时通过域名解析填充
 WG_SUBNET="10.10.10.0/24"
-WG_CLIENT_IP="10.10.10.5/24"
+WG_CLIENT_IP="10.10.10.2/24"
 WG_PRIO=11998
 WG_EP_CACHE="$MODDIR/logs/.wg_endpoint_cache"
 
@@ -85,11 +85,16 @@ clean_rules() {
 
     # 清理 WireGuard 路由规则
     ip -4 rule del to $WG_SUBNET 2>/dev/null
+    ip route del 10.10.10.1 2>/dev/null
     # 清理 endpoint 路由 (priority 100)
     while ip -6 rule del priority 100 2>/dev/null; do :; done
 
+    # 清理 INPUT 链中的蜂窝入站跳转规则
+    while iptables -D INPUT -i rmnet_+ -j ANR_CELL_INPUT 2>/dev/null; do :; done
+    while ip6tables -D INPUT -i rmnet_+ -j ANR_CELL_INPUT 2>/dev/null; do :; done
+
     # 清理 iptables 链
-    for chain in ANR_BLOCK ANR_CELL_GUARD ANR_TAILSCALE; do
+    for chain in ANR_BLOCK ANR_CELL_GUARD ANR_TAILSCALE ANR_CELL_INPUT; do
         iptables -D OUTPUT -j $chain 2>/dev/null
         iptables -F $chain 2>/dev/null
         iptables -X $chain 2>/dev/null
@@ -187,6 +192,37 @@ apply_rules() {
 
     local wifi_up=$(ip link show wlan0 2>/dev/null | grep -c 'UP')
 
+    # 检测 Wi-Fi 是否真正连接且获得 IP (wlan0/wlan1)
+    local wifi_connected=0
+    local wifi_if=""
+    if ip -4 addr show wlan0 2>/dev/null | grep -q 'inet '; then
+        wifi_connected=1
+        wifi_if="wlan0"
+    elif ip -4 addr show wlan1 2>/dev/null | grep -q 'inet '; then
+        wifi_connected=1
+        wifi_if="wlan1"
+    fi
+
+    # 强制关闭 Wi-Fi 节能模式以降低延迟和丢包率
+    if [ "$wifi_connected" -eq 1 ] && [ -n "$wifi_if" ]; then
+        if command -v iw >/dev/null 2>&1; then
+            iw dev "$wifi_if" set power_save off >/dev/null 2>&1 || true
+            log "⚡ 已强制关闭 Wi-Fi 节能模式 ($wifi_if)"
+        fi
+    fi
+
+    # 强制关闭系统级后台 WLAN 扫描与蓝牙扫描以防止延迟抖动 (持久化设置，无需在每次网络切换时重复执行，避免 JVM 启动开销)
+    # settings put global wifi_scan_always_enabled 0 >/dev/null 2>&1 || true
+    # settings put global ble_scan_always_enabled 0 >/dev/null 2>&1 || true
+
+    # 强制关闭 Google 位置信息精确度 (Network Location Services)
+    # content insert --uri content://com.google.settings/partner --bind name:s:network_location_opt_in --bind value:s:0 >/dev/null 2>&1 || true
+    # content insert --uri content://com.google.settings/partner --bind name:s:use_location_for_services --bind value:s:0 >/dev/null 2>&1 || true
+
+    # 强制关闭系统级与小米高精度定位服务 (仅使用 GPS 定位)
+    # settings put secure location_mode 1 >/dev/null 2>&1 || true
+    # settings put secure xiaomi_high_precise_location 0 >/dev/null 2>&1 || true
+
     clean_rules
 
     # rp_filter 松散模式
@@ -207,27 +243,18 @@ apply_rules() {
     # 0. 解析 endpoint 域名
     resolve_wg_endpoint
 
-    # 1. WG 子网路由: 确保 10.10.10.0/24 可达
+    # 1. WG 路由策略: 确保目标为 WG 子网和内网 LAN 的流量，以及源为 WG 子网的流量走 main 表 (wg0 接口)
     ip -4 rule del to $WG_SUBNET 2>/dev/null
-    if [ "$wifi_up" -gt 0 ]; then
-        # 在家时: 走 WiFi 默认路由（局域网直连，不经过 WG 隧道）
-        WIFI_TABLE=$(ip -4 route show table all 2>/dev/null | grep "default.*dev wlan0" | head -1 | awk '{for(i=1;i<=NF;i++) if($i=="table") print $(i+1)}')
-        if [ -n "$WIFI_TABLE" ]; then
-            ip -4 rule add to $WG_SUBNET table "$WIFI_TABLE" priority $WG_PRIO
-            log "WG 子网 $WG_SUBNET → WiFi 直连 (table $WIFI_TABLE)"
-        else
-            ip -4 rule add to $WG_SUBNET table main priority $WG_PRIO
-            log "WG 子网 $WG_SUBNET → main 表 (wg0)"
-        fi
-    else
-        # 不在家时: 走 main 表 (wg0 接口)
-        ip -4 rule add to $WG_SUBNET table main priority $WG_PRIO
-        log "WG 子网 $WG_SUBNET → main 表 (wg0)"
-    fi
+    ip -4 rule add to $WG_SUBNET table main priority $WG_PRIO
+    ip -4 rule del to 192.168.88.0/24 2>/dev/null
+    ip -4 rule add to 192.168.88.0/24 table main priority $WG_PRIO
+    ip -4 rule del from $WG_SUBNET 2>/dev/null
+    ip -4 rule add from $WG_SUBNET table main priority 99
 
     # 2. WG endpoint IPv6 路由: 确保蜂窝可达
     if [ -n "$WG_ENDPOINT_V6" ]; then
-        ip -6 rule del to $WG_ENDPOINT_V6 2>/dev/null
+        # 显式清理历史残留的 priority 100 规则，保证幂等性并避免旧 IP 残留
+        while ip -6 rule del priority 100 2>/dev/null; do :; done
         if [ "$has_cell" -eq 0 ] && [ -n "$CELL_TABLE_V6" ]; then
             ip -6 rule add to $WG_ENDPOINT_V6 table "$CELL_TABLE_V6" priority 100
             log "WG endpoint $WG_ENDPOINT_V6 → $CELL_IF (table $CELL_TABLE_V6)"
@@ -236,36 +263,95 @@ apply_rules() {
 
     # 3. wg0 接口自动拉起 (如果已配置且未运行)
     if [ -f "$WG_CONF" ] && [ -x "$WG_BIN" ]; then
+        local newly_started=0
         if ! ip link show wg0 >/dev/null 2>&1; then
             log "WG: wg0 未运行，自动启动..."
             sh "$MODDIR/scripts/wg_start.sh" start >/dev/null 2>&1
             sleep 1
             if ip link show wg0 >/dev/null 2>&1; then
                 log "WG: wg0 已自动拉起 ✅"
+                newly_started=1
             else
                 log "WG: wg0 启动失败 ⚠"
             fi
         else
             log "WG: wg0 已运行 ✅"
-            # 路由变化后重置 wg0 socket（不丢配置）
-            if [ -n "$WG_ENDPOINT_V6" ]; then
-                local peer=$($WG_BIN show wg0 peers 2>/dev/null | head -1)
-                if [ -n "$peer" ]; then
-                    LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib $WG_BIN set wg0 peer "$peer" endpoint "[$WG_ENDPOINT_V6]:51820" 2>/dev/null
-                    ip link set wg0 down 2>/dev/null
-                    ip link set wg0 up 2>/dev/null
-                    log "WG: 已刷新 endpoint + 重置接口"
+        fi
+
+        # 无论新启动还是已运行，只要有解析出来的 IP 并且 wg0 存在，就确保 peer 和 endpoint 配置正确
+        if ip link show wg0 >/dev/null 2>&1 && [ -n "$WG_ENDPOINT_V6" ]; then
+            local peer=$(LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib $WG_BIN show wg0 peers 2>/dev/null | head -1)
+            # 如果没有配置 peer（例如因为 DNS 失败），根据 wg0.conf 重新设置 peer
+            if [ -z "$peer" ]; then
+                local server_pub=$(sed -n 's/^PublicKey[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
+                local allowed_ips=$(sed -n 's/^AllowedIPs[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
+                local client_psk=$(sed -n 's/^PresharedKey[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
+                if [ -n "$server_pub" ] && [ -n "$allowed_ips" ]; then
+                    if [ -n "$client_psk" ]; then
+                        local psk_file="/data/local/tmp/wg_psk.key"
+                        echo "$client_psk" > "$psk_file"
+                        chmod 600 "$psk_file"
+                        LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib $WG_BIN set wg0 peer "$server_pub" \
+                            endpoint "[$WG_ENDPOINT_V6]:51820" \
+                            allowed-ips "$allowed_ips" \
+                            preshared-key "$psk_file" \
+                            persistent-keepalive 25
+                        rm -f "$psk_file"
+                    else
+                        LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib $WG_BIN set wg0 peer "$server_pub" \
+                            endpoint "[$WG_ENDPOINT_V6]:51820" \
+                            allowed-ips "$allowed_ips" \
+                            persistent-keepalive 25
+                    fi
+                    log "WG: 重新建立 Peer 关联并绑定 Endpoint ✅"
+                    peer=$server_pub
                 fi
+            else
+                # 如果已有 peer，只更新 endpoint
+                LD_LIBRARY_PATH=/data/data/com.termux/files/usr/lib $WG_BIN set wg0 peer "$peer" endpoint "[$WG_ENDPOINT_V6]:51820" 2>/dev/null
+            fi
+            
+            # 如果不是全新启动的（即原来就在运行，需要重置 link 来刷新 socket 并应用路由）
+            if [ "$newly_started" -eq 0 ]; then
+                ip link set wg0 down 2>/dev/null
+                ip link set wg0 up 2>/dev/null
+                ip route add 10.10.10.0/24 dev wg0 2>/dev/null || true
+                ip route add 192.168.88.0/24 dev wg0 2>/dev/null || true
+                log "WG: 已刷新 endpoint + 重置接口 + 重置路由"
             fi
         fi
     else
         log "WG: 未找到配置或 wg 二进制，跳过自动启动"
     fi
 
+    # 4. 确保 wg0 接口的反向路径过滤处于松散模式（rp_filter=2），解决 macOS 诊断手机网络时因反向路径校验失败而被丢弃入站包的问题
+    if ip link show wg0 >/dev/null 2>&1; then
+        [ -f /proc/sys/net/ipv4/conf/wg0/rp_filter ] && echo 2 > /proc/sys/net/ipv4/conf/wg0/rp_filter
+        [ -f /proc/sys/net/ipv4/conf/all/rp_filter ] && echo 2 > /proc/sys/net/ipv4/conf/all/rp_filter
+    fi
+
+
     # 4. WG 防火墙: 保护 WG UDP 流量不被其他规则影响
     #    WG 使用 kernel socket (UID 0) 发送 UDP 到 endpoint
     #    在蜂窝守卫中已放行 UID 0 的 UDP
     log "WG: 防火墙规则已通过蜂窝守卫链放行"
+
+    # === 5. 局域网直连路由分流 ===
+    # 当手机连接家庭 Wi-Fi (192.168.88.x) 且 RB5009 (192.168.88.1) 可达时，
+    # 设置 10.10.10.1 (主路由的 WG IP) 直接走 Wi-Fi 局域网，避免通过蜂窝和公网加密隧道绕行，大幅降低延迟。
+    ip route del 10.10.10.1 2>/dev/null
+    if [ "$wifi_connected" -eq 1 ] && [ -n "$wifi_if" ]; then
+        local my_wifi_ip=$(ip -4 addr show "$wifi_if" 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d/ -f1)
+        case "$my_wifi_ip" in
+            192.168.88.*)
+                if ping -c 1 -W 1 -I "$wifi_if" 192.168.88.1 >/dev/null 2>&1; then
+                    ip route add 10.10.10.1 via 192.168.88.1 dev "$wifi_if"
+                    log "✓ 检测到处于家庭局域网，已将 10.10.10.1 重定向至 $wifi_if 局域网直连 (RB5009 192.168.88.1)"
+                fi
+                ;;
+        esac
+    fi
+
 
     # ============================================================
     # Tailscale 清理与封堵
@@ -387,8 +473,9 @@ apply_rules() {
 
     log "完成: ${count_cell} 个走蜂窝, ${count_block} 个禁网"
 
-    # === 蜂窝守卫: 仅允许 Termux 和系统进程使用蜂窝 ===
-    if [ "$has_cell" -eq 0 ] && [ -n "$CELL_IF" ]; then
+    # === 蜂窝守卫: 仅在 Wi-Fi 在线且双网共存时，为了防止偷跑流量才启用 ===
+    # === 如果 Wi-Fi 离线，说明只有蜂窝可用，此时必须放行所有 app 以便正常上网 ===
+    if [ "$wifi_connected" -eq 1 ] && [ "$has_cell" -eq 0 ] && [ -n "$CELL_IF" ]; then
         iptables -N ANR_CELL_GUARD 2>/dev/null
         ip6tables -N ANR_CELL_GUARD 2>/dev/null
 
@@ -431,6 +518,29 @@ apply_rules() {
         ip6tables -I OUTPUT -j ANR_CELL_GUARD
         log "🛡 蜂窝守卫: 仅允许 UID [0(root)${cell_uids}] 使用 $CELL_IF"
     fi
+
+    # === 蜂窝入站守卫: 防止公网通过 IPv6/IPv4 攻击暴露端口 ===
+    log "=== 蜂窝入站安全防护 ==="
+    iptables -N ANR_CELL_INPUT 2>/dev/null
+    ip6tables -N ANR_CELL_INPUT 2>/dev/null
+
+    iptables -F ANR_CELL_INPUT
+    ip6tables -F ANR_CELL_INPUT
+
+    # 1. 允许 ESTABLISHED,RELATED 状态（确保主动发起的出站连接如网页、WireGuard 等能正常回包）
+    iptables -A ANR_CELL_INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+    ip6tables -A ANR_CELL_INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+    # 2. 丢弃所有新的 TCP/UDP 连接请求 (入站)
+    iptables -A ANR_CELL_INPUT -p tcp -j DROP
+    ip6tables -A ANR_CELL_INPUT -p tcp -j DROP
+    iptables -A ANR_CELL_INPUT -p udp -j DROP
+    ip6tables -A ANR_CELL_INPUT -p udp -j DROP
+
+    # 3. 拦截所有蜂窝接口 (rmnet_+) 的入站流量并跳转到安全链
+    iptables -I INPUT -i rmnet_+ -j ANR_CELL_INPUT
+    ip6tables -I INPUT -i rmnet_+ -j ANR_CELL_INPUT
+    log "🔒 蜂窝入站守卫已激活：禁止所有外部 TCP/UDP 入站连接 (rmnet_+)"
 
     echo "$CELL_TABLE_V6" > "$MODDIR/logs/.cell_table_v6" 2>/dev/null
     echo "$CELL_TABLE_V4" > "$MODDIR/logs/.cell_table_v4" 2>/dev/null

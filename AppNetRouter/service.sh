@@ -34,8 +34,4 @@ sh "$MODDIR/scripts/apply_rules.sh"
 sh "$MODDIR/scripts/wg_start.sh" start >/dev/null 2>&1
 
 # 启动蜂窝接口变化监控 (自动更新 WG 路由)
-# 先杀旧进程
-for pid in $(pgrep -f "net_monitor.sh" 2>/dev/null); do
-    kill "$pid" 2>/dev/null
-done
-nohup sh "$MODDIR/scripts/net_monitor.sh" > /dev/null 2>&1 &
+sh "$MODDIR/scripts/net_monitor.sh" start
