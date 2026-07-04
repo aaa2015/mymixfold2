@@ -1,6 +1,11 @@
 #!/system/bin/sh
 ##########################################################
 unset LD_LIBRARY_PATH
+
+# 强制使用系统 ip 命令，避免 KernelSU 环境下 busybox 导致 uidrange/table ID 解析出错
+ip() {
+    /system/bin/ip "$@"
+}
 # apply_rules.sh — App Net Router 核心路由规则引擎
 #
 # 配置格式: pkg:wifi_flag:cell_flag (1=启用 0=禁用)
@@ -16,8 +21,7 @@ unset LD_LIBRARY_PATH
 #   自动管理 wg0 接口，通过蜂窝 IPv6 连接服务器
 #   endpoint: 通过 DDNS 域名动态解析 ←→ wg0(10.10.10.0/24)
 #
-# Tailscale 封堵:
-#   已替换为 WireGuard，禁止 Tailscale 残留进程/接口
+
 ##########################################################
 
 MODDIR=${MODDIR:-/data/adb/modules/app_net_router}
@@ -66,8 +70,7 @@ resolve_wg_endpoint() {
     fi
 }
 
-# === Tailscale 封堵 ===
-TAILSCALE_PKG="com.tailscale.ipn"
+
 
 log() {
     local today=$(date '+%Y-%m-%d')
@@ -94,7 +97,7 @@ clean_rules() {
     while ip6tables -D INPUT -i rmnet_+ -j ANR_CELL_INPUT 2>/dev/null; do :; done
 
     # 清理 iptables 链
-    for chain in ANR_BLOCK ANR_CELL_GUARD ANR_TAILSCALE ANR_CELL_INPUT; do
+    for chain in ANR_BLOCK ANR_CELL_GUARD ANR_CELL_INPUT; do
         iptables -D OUTPUT -j $chain 2>/dev/null
         iptables -F $chain 2>/dev/null
         iptables -X $chain 2>/dev/null
@@ -192,15 +195,26 @@ apply_rules() {
 
     local wifi_up=$(ip link show wlan0 2>/dev/null | grep -c 'UP')
 
-    # 检测 Wi-Fi 是否真正连接且获得 IP (wlan0/wlan1)
+    # 检测 Wi-Fi 是否真正连接且获得 IP (wlan0/wlan1)，并主动探测网关连通性以防弱信号断流
     local wifi_connected=0
     local wifi_if=""
     if ip -4 addr show wlan0 2>/dev/null | grep -q 'inet '; then
-        wifi_connected=1
         wifi_if="wlan0"
     elif ip -4 addr show wlan1 2>/dev/null | grep -q 'inet '; then
-        wifi_connected=1
         wifi_if="wlan1"
+    fi
+
+    if [ -n "$wifi_if" ]; then
+        local gateway=$(ip route show table all 2>/dev/null | grep "default via .* dev $wifi_if" | awk '{print $3}' | head -1)
+        [ -z "$gateway" ] && gateway=$(ip route show table "$wifi_if" 2>/dev/null | grep default | awk '{print $3}' | head -1)
+        [ -z "$gateway" ] && gateway=$(ip route show dev "$wifi_if" 2>/dev/null | grep default | awk '{print $3}' | head -1)
+        if [ -n "$gateway" ]; then
+            if ping -c 1 -W 1 -I "$wifi_if" "$gateway" >/dev/null 2>&1; then
+                wifi_connected=1
+            else
+                log "⚠️ Wi-Fi 网关 $gateway 不可达，判定为弱信号失效，回退至纯蜂窝模式"
+            fi
+        fi
     fi
 
     # 强制关闭 Wi-Fi 节能模式以降低延迟和丢包率
@@ -342,54 +356,28 @@ apply_rules() {
     ip route del 10.10.10.1 2>/dev/null
     if [ "$wifi_connected" -eq 1 ] && [ -n "$wifi_if" ]; then
         local my_wifi_ip=$(ip -4 addr show "$wifi_if" 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d/ -f1)
+        
+        # 尝试获取当前连接的 SSID 辅助校验
+        local current_ssid=""
+        if command -v cmd >/dev/null 2>&1; then
+            current_ssid=$(cmd wifi status 2>/dev/null | grep -i "SSID:" | head -1 | awk -F': ' '{print $2}' | tr -d '"' | tr -d '[:space:]')
+        fi
+        [ -z "$current_ssid" ] && current_ssid=$(dumpsys wifi 2>/dev/null | grep -oE "SSID: [^\,]*" | head -1 | cut -d' ' -f2 | tr -d '"' | tr -d '[:space:]')
+
         case "$my_wifi_ip" in
             192.168.88.*)
                 if ping -c 1 -W 1 -I "$wifi_if" 192.168.88.1 >/dev/null 2>&1; then
                     ip route add 10.10.10.1 via 192.168.88.1 dev "$wifi_if"
-                    log "✓ 检测到处于家庭局域网，已将 10.10.10.1 重定向至 $wifi_if 局域网直连 (RB5009 192.168.88.1)"
+                    # 清理 wg0 中的局域网路由，强行回退到物理 Wi-Fi 直连，防止路由回环绕路
+                    ip route del 192.168.88.0/24 dev wg0 2>/dev/null || true
+                    log "✓ 检测到处于家庭局域网 (SSID: ${current_ssid:-未知})，已将 10.10.10.1 重定向至 $wifi_if，并已移除 wg0 的 LAN 路由，改为物理直连。"
                 fi
                 ;;
         esac
     fi
 
 
-    # ============================================================
-    # Tailscale 清理与封堵
-    # 已替换为 WireGuard，彻底禁止 Tailscale 残留
-    # ============================================================
-    log "=== Tailscale 清理 ==="
 
-    # 1. 杀死 Tailscale 残留进程
-    local ts_pids=$(pgrep -f tailscaled 2>/dev/null)
-    if [ -n "$ts_pids" ]; then
-        kill -9 $ts_pids 2>/dev/null
-        log "Tailscale: 已杀死残留进程 (PID: $ts_pids)"
-    fi
-
-    # 2. 清除 Tailscale 网络接口 (tailscale0 或 tun 接口)
-    ip link del tailscale0 2>/dev/null && log "Tailscale: 已删除 tailscale0 接口"
-
-    # 3. iptables 封堵: 如果 Tailscale 还装着，彻底禁网
-    local ts_uid=$(get_uid "$TAILSCALE_PKG")
-    if [ -n "$ts_uid" ]; then
-        iptables -N ANR_TAILSCALE 2>/dev/null
-        ip6tables -N ANR_TAILSCALE 2>/dev/null
-        iptables -A ANR_TAILSCALE -m owner --uid-owner "$ts_uid" -j DROP
-        ip6tables -A ANR_TAILSCALE -m owner --uid-owner "$ts_uid" -j DROP
-        iptables -I OUTPUT -j ANR_TAILSCALE
-        ip6tables -I OUTPUT -j ANR_TAILSCALE
-        log "Tailscale: UID $ts_uid 已被 iptables 封堵 🚫"
-    else
-        log "Tailscale: 未安装，无需封堵 ✅"
-    fi
-
-    # 4. 清除 Tailscale 的路由规则残留
-    #    Tailscale 会在 priority 5210/5230/5250/5270 添加规则
-    for prio in 5210 5230 5250 5270; do
-        while ip -4 rule del priority $prio 2>/dev/null; do :; done
-        while ip -6 rule del priority $prio 2>/dev/null; do :; done
-    done
-    log "Tailscale: 路由规则残留已清除"
 
     # 创建 iptables 链（用于禁网场景）
     iptables -N ANR_BLOCK 2>/dev/null

@@ -12,8 +12,10 @@ SERVER_PUB=$(sed -n 's/^PublicKey[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
 ENDPOINT=$(sed -n 's/^Endpoint[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
 ALLOWED_IPS=$(sed -n 's/^AllowedIPs[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
 CLIENT_PSK=$(sed -n 's/^PresharedKey[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
+MTU=$(sed -n 's/^MTU[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
 
-log() { echo "[WG] $(date '+%H:%M:%S') $1"; }
+# log() function defined after variables
+log() { echo "[WG] \$(date '+%H:%M:%S') \$1"; }
 
 start() {
     # 检查是否已运行
@@ -53,6 +55,11 @@ start() {
 
     # 配置地址并启动
     ip addr add 10.10.10.2/24 dev wg0
+    if [ -n "$MTU" ]; then
+        ip link set dev wg0 mtu "$MTU"
+    else
+        ip link set dev wg0 mtu 1280
+    fi
     ip link set wg0 up
 
     # 添加路由以支持内网访问
