@@ -13,6 +13,7 @@ ENDPOINT=$(sed -n 's/^Endpoint[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
 ALLOWED_IPS=$(sed -n 's/^AllowedIPs[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
 CLIENT_PSK=$(sed -n 's/^PresharedKey[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
 MTU=$(sed -n 's/^MTU[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
+CLIENT_IP=$(sed -n 's/^Address[[:space:]]*=[[:space:]]*//p' "$WG_CONF")
 
 # log() function defined after variables
 log() { echo "[WG] \$(date '+%H:%M:%S') \$1"; }
@@ -54,7 +55,12 @@ start() {
     fi
 
     # 配置地址并启动
-    ip addr add 10.10.10.2/24 dev wg0
+    if [ -n "$CLIENT_IP" ]; then
+        local client_ip_clean=$(echo "$CLIENT_IP" | cut -d/ -f1)
+        ip addr add "${client_ip_clean}/24" dev wg0
+    else
+        ip addr add 10.10.10.2/24 dev wg0
+    fi
     if [ -n "$MTU" ]; then
         ip link set dev wg0 mtu "$MTU"
     else

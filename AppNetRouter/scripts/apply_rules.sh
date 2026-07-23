@@ -38,7 +38,7 @@ WG_DOMAIN="myhome2026.online"
 WG_ENDPOINT_V6=""  # 运行时通过域名解析填充
 WG_SUBNET="10.10.10.0/24"
 WG_CLIENT_IP="10.10.10.2/24"
-WG_PRIO=11998
+WG_PRIO=9000
 WG_EP_CACHE="$MODDIR/logs/.wg_endpoint_cache"
 
 # 解析域名获取 IPv6 地址（多级回退）
@@ -366,10 +366,10 @@ apply_rules() {
 
         case "$my_wifi_ip" in
             192.168.88.*)
+                # 先行删除可能存在的冲突路由，否则 ping 也会失败
+                ip route del 192.168.88.0/24 dev wg0 2>/dev/null || true
                 if ping -c 1 -W 1 -I "$wifi_if" 192.168.88.1 >/dev/null 2>&1; then
                     ip route add 10.10.10.1 via 192.168.88.1 dev "$wifi_if"
-                    # 清理 wg0 中的局域网路由，强行回退到物理 Wi-Fi 直连，防止路由回环绕路
-                    ip route del 192.168.88.0/24 dev wg0 2>/dev/null || true
                     log "✓ 检测到处于家庭局域网 (SSID: ${current_ssid:-未知})，已将 10.10.10.1 重定向至 $wifi_if，并已移除 wg0 的 LAN 路由，改为物理直连。"
                 fi
                 ;;
