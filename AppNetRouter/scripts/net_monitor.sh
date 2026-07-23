@@ -54,6 +54,61 @@ get_wg_route_iface() {
     ip -6 rule 2>/dev/null | grep "priority 100" | awk '{print $NF}' | head -1
 }
 
+# 系统通知提醒 (利用 Android cmd notification post)
+send_notification() {
+    local title="$1"
+    local text="$2"
+    local tag="${3:-AppNetRouter}"
+
+    if command -v cmd >/dev/null 2>&1; then
+        cmd notification post -S bigtext "$tag" "$title" "$text" >/dev/null 2>&1 || true
+    fi
+}
+
+# 根据 UID 查找包名
+get_pkg_by_uid() {
+    local target_uid=$1
+    local pkg=""
+    if [ -f "/data/system/packages.list" ]; then
+        pkg=$(grep " $target_uid " /data/system/packages.list | awk '{print $1}' | head -1)
+    fi
+    if [ -z "$pkg" ]; then
+        pkg=$(pm list packages -U 2>/dev/null | grep "uid:$target_uid" | sed 's/package://' | cut -d' ' -f1 | head -1)
+    fi
+    echo "${pkg:-UID $target_uid}"
+}
+
+# 监控双网模式下是否有 App 正在使用/尝试使用蜂窝流量并进行通知提醒
+LAST_NOTIFY_TIME=0
+
+check_cellular_traffic_alert() {
+    local cell_if="$1"
+    local now=$(date +%s)
+
+    # 冷却时间：60 秒内最多通知一次，避免打扰
+    if [ $((now - LAST_NOTIFY_TIME)) -lt 60 ]; then
+        return
+    fi
+
+    local guard_stats=$(iptables -v -L ANR_CELL_GUARD -n -x 2>/dev/null)
+    [ -z "$guard_stats" ] && return
+
+    echo "$guard_stats" | grep "owner UID match" | while read -r line; do
+        local bytes=$(echo "$line" | awk '{print $2}')
+        local uid=$(echo "$line" | grep -oE "owner UID match [0-9]+" | awk '{print $4}')
+
+        # 忽略 Root (UID 0)
+        if [ -n "$uid" ] && [ "$uid" -ne 0 ] && [ "$bytes" -gt 1024 ]; then
+            local kb=$((bytes / 1024))
+            local pkg=$(get_pkg_by_uid "$uid")
+            log "🔔 [双网消费提醒] 应用 $pkg (UID $uid) 正在使用蜂窝流量 (${kb} KB)"
+            send_notification "【蜂窝流量消费提醒】" "手机连接 Wi-Fi 时，应用 $pkg (UID $uid) 正在使用蜂窝数据 (${kb} KB)" "cell_traffic_$uid"
+            LAST_NOTIFY_TIME=$now
+            break
+        fi
+    done
+}
+
 do_reapply() {
     log "🔄 网络状态变化，重新配置..."
 
@@ -117,9 +172,14 @@ monitor_loop() {
         fi
 
         # 检查我们的自定义路由规则是否被 Android netd 清理了
-        if ! ip rule 2>/dev/null | grep -q "11998:"; then
+        if ! ip rule 2>/dev/null | grep -q "7989:"; then
             log "⚠️ 检测到自定义路由规则被系统清理，正在重新应用..."
             do_reapply "$last_iface" "$current"
+        fi
+
+        # 当 Wi-Fi 与蜂窝双网共存时，检测是否有应用正在消耗蜂窝流量并发送通知
+        if [ "$current_wifi" = "1" ] && [ -n "$current" ]; then
+            check_cellular_traffic_alert "$current"
         fi
 
         # 定期检查 WG 是否有握手（每 60s 检一次）

@@ -27,8 +27,8 @@ ip() {
 MODDIR=${MODDIR:-/data/adb/modules/app_net_router}
 CONF="$MODDIR/config/apps.conf"
 LOGDIR="$MODDIR/logs"
-RULE_PRIO=12000
-LAN_PRIO=11999
+RULE_PRIO=7990
+LAN_PRIO=7989
 PACKAGES_LIST="/data/system/packages.list"
 
 # === WireGuard 配置 ===
@@ -85,6 +85,10 @@ clean_rules() {
     while ip -6 rule del priority $LAN_PRIO 2>/dev/null; do :; done
     while ip -4 rule del priority $RULE_PRIO 2>/dev/null; do :; done
     while ip -6 rule del priority $RULE_PRIO 2>/dev/null; do :; done
+
+    # 彻底清理可能残留的 priority 8000 干扰规则 (来自系统/其他 VPN 抢占)
+    while ip -4 rule del priority 8000 2>/dev/null; do :; done
+    while ip -6 rule del priority 8000 2>/dev/null; do :; done
 
     # 清理 WireGuard 路由规则
     ip -4 rule del to $WG_SUBNET 2>/dev/null
